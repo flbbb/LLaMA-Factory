@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING, Literal, Optional, Union
 import numpy as np
 from datasets import load_dataset, load_from_disk
 
+from llamafactory.utils import get_env
+
 from ..extras.constants import FILEEXT2TYPE
 from ..extras.logging import get_logger
 from ..extras.misc import has_tokenized_data
@@ -14,7 +16,6 @@ from .parser import get_dataset_list
 from .preprocess import get_preprocess_and_print_func
 from .template import get_template_and_fix_tokenizer
 from .utils import merge_dataset
-
 
 if TYPE_CHECKING:
     from datasets import Dataset, IterableDataset
@@ -35,7 +36,7 @@ def load_single_dataset(
 ) -> Union["Dataset", "IterableDataset"]:
     logger.info("Loading dataset {}...".format(dataset_attr))
     data_path, data_name, data_dir, data_files = None, None, None, None
-    if dataset_attr.load_from in ["hf_hub", "ms_hub"]:
+    if dataset_attr.load_from in ["hf_hub", "ms_hub", "local"]:
         data_path = dataset_attr.dataset_name
         data_name = dataset_attr.subset
         data_dir = dataset_attr.folder
@@ -80,18 +81,26 @@ def load_single_dataset(
                 split=data_args.split,
                 cache_dir=cache_dir,
                 token=model_args.ms_hub_token,
-                use_streaming=(data_args.streaming and (dataset_attr.load_from != "file")),
+                use_streaming=(
+                    data_args.streaming and (dataset_attr.load_from != "file")
+                ),
             )
             if isinstance(dataset, MsDataset):
                 dataset = dataset.to_hf_dataset()
         except ImportError:
-            raise ImportError("Please install modelscope via `pip install modelscope -U`")
+            raise ImportError(
+                "Please install modelscope via `pip install modelscope -U`"
+            )
+    elif dataset_attr.load_from == "local":
+        DATA_PATH = get_env("DATA_PATH")
+        dataset = load_from_disk(str(DATA_PATH / data_path))[data_args.split]
     else:
-        if "trust_remote_code" in inspect.signature(load_dataset).parameters:  # for datasets==2.16.0
+        if (
+            "trust_remote_code" in inspect.signature(load_dataset).parameters
+        ):  # for datasets==2.16.0
             kwargs = {"trust_remote_code": True}
         else:
             kwargs = {}
-
         dataset = load_dataset(
             path=data_path,
             name=data_name,
@@ -104,7 +113,9 @@ def load_single_dataset(
             **kwargs,
         )
 
-    if data_args.streaming and (dataset_attr.load_from == "file"):  # faster than specifying streaming=True
+    if data_args.streaming and (
+        dataset_attr.load_from == "file"
+    ):  # faster than specifying streaming=True
         dataset = dataset.to_iterable_dataset()  # TODO: add num shards parameter
 
     if dataset_attr.num_samples is not None and not data_args.streaming:
@@ -117,7 +128,11 @@ def load_single_dataset(
 
         assert len(indexes) == dataset_attr.num_samples, "Sample num mismatched."
         dataset = dataset.select(indexes)
-        logger.info("Sampled {} examples from dataset {}.".format(dataset_attr.num_samples, dataset_attr))
+        logger.info(
+            "Sampled {} examples from dataset {}.".format(
+                dataset_attr.num_samples, dataset_attr
+            )
+        )
 
     if data_args.max_samples is not None:  # truncate dataset
         indexes = np.random.permutation(len(dataset))[: data_args.max_samples]
@@ -141,9 +156,14 @@ def get_dataset(
     # Load tokenized dataset
     if data_args.tokenized_path is not None:
         if has_tokenized_data(data_args.tokenized_path):
-            logger.warning("Loading dataset from disk will ignore other data arguments.")
+
+            logger.warning(
+                "Loading dataset from disk will ignore other data arguments."
+            )
             dataset = load_from_disk(data_args.tokenized_path)
-            logger.info("Loaded tokenized dataset from {}.".format(data_args.tokenized_path))
+            logger.info(
+                "Loaded tokenized dataset from {}.".format(data_args.tokenized_path)
+            )
             if data_args.streaming:
                 dataset = dataset.to_iterable_dataset()
             return dataset
@@ -154,10 +174,16 @@ def get_dataset(
     with training_args.main_process_first(desc="load dataset"):
         all_datasets = []
         for dataset_attr in get_dataset_list(data_args):
-            if (stage == "rm" and dataset_attr.ranking is False) or (stage != "rm" and dataset_attr.ranking is True):
-                raise ValueError("The dataset is not applicable in the current training stage.")
+            if (stage == "rm" and dataset_attr.ranking is False) or (
+                stage != "rm" and dataset_attr.ranking is True
+            ):
+                raise ValueError(
+                    "The dataset is not applicable in the current training stage."
+                )
 
-            all_datasets.append(load_single_dataset(dataset_attr, model_args, data_args))
+            all_datasets.append(
+                load_single_dataset(dataset_attr, model_args, data_args)
+            )
         dataset = merge_dataset(all_datasets, data_args, training_args)
 
     with training_args.main_process_first(desc="pre-process dataset"):
@@ -173,13 +199,21 @@ def get_dataset(
                 desc="Running tokenizer on dataset",
             )
 
-        dataset = dataset.map(preprocess_func, batched=True, remove_columns=column_names, **kwargs)
+        dataset = dataset.map(
+            preprocess_func, batched=True, remove_columns=column_names, **kwargs
+        )
 
         if data_args.tokenized_path is not None:
             if training_args.should_save:
                 dataset.save_to_disk(data_args.tokenized_path)
-                logger.info("Tokenized dataset saved at {}.".format(data_args.tokenized_path))
-                logger.info("Please restart the training with `--tokenized_path {}`.".format(data_args.tokenized_path))
+                logger.info(
+                    "Tokenized dataset saved at {}.".format(data_args.tokenized_path)
+                )
+                logger.info(
+                    "Please restart the training with `--tokenized_path {}`.".format(
+                        data_args.tokenized_path
+                    )
+                )
 
             sys.exit(0)
 
@@ -188,8 +222,12 @@ def get_dataset(
                 print_function(next(iter(dataset)))
             except StopIteration:
                 if stage == "pt":
-                    raise RuntimeError("Cannot find sufficient samples, consider increasing dataset size.")
+                    raise RuntimeError(
+                        "Cannot find sufficient samples, consider increasing dataset size."
+                    )
                 else:
-                    raise RuntimeError("Cannot find valid samples, check `data/README.md` for the data format.")
+                    raise RuntimeError(
+                        "Cannot find valid samples, check `data/README.md` for the data format."
+                    )
 
         return dataset

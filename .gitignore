@@ -2,9 +2,16 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.rsyncignore
 
 # C extensions
 *.so
+.vscode
+notebooks/
+local/
+env*
+
+slurm/
 
 # Distribution / packaging
 .Python

@@ -5,13 +5,10 @@ import sys
 from enum import Enum, unique
 
 from . import launcher
-from .api.app import run_api
-from .chat.chat_model import run_chat
 from .eval.evaluator import run_eval
 from .extras.logging import get_logger
 from .extras.misc import get_device_count
 from .train.tuner import export_model, run_exp
-from .webui.interface import run_web_demo, run_web_ui
 
 
 USAGE = (
@@ -61,11 +58,7 @@ class Command(str, Enum):
 
 def main():
     command = sys.argv.pop(1)
-    if command == Command.API:
-        run_api()
-    elif command == Command.CHAT:
-        run_chat()
-    elif command == Command.EVAL:
+    if command == Command.EVAL:
         run_eval()
     elif command == Command.EXPORT:
         export_model()
@@ -75,8 +68,14 @@ def main():
             node_rank = os.environ.get("RANK", "0")
             nproc_per_node = os.environ.get("NPROC_PER_NODE", str(get_device_count()))
             master_addr = os.environ.get("MASTER_ADDR", "127.0.0.1")
-            master_port = os.environ.get("MASTER_PORT", str(random.randint(20001, 29999)))
-            logger.info("Initializing distributed tasks at: {}:{}".format(master_addr, master_port))
+            master_port = os.environ.get(
+                "MASTER_PORT", str(random.randint(20001, 29999))
+            )
+            logger.info(
+                "Initializing distributed tasks at: {}:{}".format(
+                    master_addr, master_port
+                )
+            )
             subprocess.run(
                 [
                     "torchrun",
@@ -94,12 +93,9 @@ def main():
                     *sys.argv[1:],
                 ]
             )
+
         else:
             run_exp()
-    elif command == Command.WEBDEMO:
-        run_web_demo()
-    elif command == Command.WEBUI:
-        run_web_ui()
     elif command == Command.VER:
         print(WELCOME)
     elif command == Command.HELP:
