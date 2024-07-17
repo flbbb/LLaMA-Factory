@@ -5,7 +5,7 @@
 ## Env
 Run the installation script:
 ```bash
-bash install.sh env-scope
+bash install.sh env-fac
 ```
 
 ## Needed directories
