@@ -1,0 +1,8 @@
+defaults:
+- model: mistral-skg7b
+- data: null
+- eval: base_eval
+- generation: mistral
+
+model_type: standalone
+loser_gen: false

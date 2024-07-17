@@ -1,0 +1,9 @@
+defaults:
+- model: tinyllama
+- data: base_data
+- eval: base_eval
+- model@noise: tinyllama
+- generation: llama
+
+do_gen: true
+loser_gen: false

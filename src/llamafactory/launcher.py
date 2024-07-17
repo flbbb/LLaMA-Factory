@@ -12,10 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import idr_torch
+from dotenv import load_dotenv
+from torch import distributed as dist
+
 from llamafactory.train.tuner import run_exp
 
 
 def launch():
+    load_dotenv()
+    # if dist.is_initialized():
+    #     print("Distributed environment already initialized.")
+    # else:
+    #     print("Initializing distributed environment...")
+    #     dist.init_process_group(
+    #         backend="nccl",
+    #         init_method="env://",
+    #         world_size=idr_torch.size,
+    #         rank=idr_torch.rank,
+    #     )
     run_exp()
 
 

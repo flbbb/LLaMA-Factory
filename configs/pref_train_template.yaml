@@ -1,0 +1,43 @@
+# model
+model_name_or_path: models_dir/StructLM-7B-Mistral
+
+# method
+stage: dpo
+do_train: true
+finetuning_type: full
+
+# ddp
+ddp_timeout: 180000000
+# deepspeed: examples/deepspeed/ds_z3_config.json
+
+# dataset
+dataset: '{dataset}'
+dataset_dir: results/cafet
+template: alpaca
+cutoff_len: 2048
+overwrite_cache: true
+preprocessing_num_workers: 1
+
+# output
+output_dir: results/cafet/skg7b/pref_full_2e-5
+logging_steps: 10
+save_strategy: epoch
+plot_loss: true
+overwrite_output_dir: true
+
+# train 
+# StructLM was trained with effective bsize = 512 = per_device_bsize * grad_acc_steps * num_gpus 
+per_device_train_batch_size: 4
+gradient_accumulation_steps: 1
+learning_rate: 0.000001
+num_train_epochs: 1.0
+lr_scheduler_type: linear
+warmup_ratio: 0.1
+gradient_checkpointing: false
+bf16: true
+bf16_full_eval: true
+
+# eval
+val_size: 0.1
+per_device_eval_batch_size: 4
+eval_strategy: epoch

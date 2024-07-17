@@ -1,0 +1,12 @@
+defaults:
+- model: mistral-skg7b
+- data: null
+- eval: base_eval
+- model@noise: mistral7b
+- generation: mistral_noisy
+
+model_type: mixture
+data.select_per_task: true 
+loser_gen: true
+
+do_gen: true

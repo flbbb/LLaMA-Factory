@@ -1,0 +1,3 @@
+model_path: TinyLlama-1.1B-Chat-v1.0
+max_length: 2048
+attn_implementation: "sdpa"
