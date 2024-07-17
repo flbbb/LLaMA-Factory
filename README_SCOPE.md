@@ -41,6 +41,10 @@ module load pytorch-gpu/py3/2.2.0
 export PYTHONUSERBASE="$SCRATCH/env/env-struct"
 export PYTHONPATH=$PYTHONPATH:$PYTHONUSERBASE
 export PATH=$PATH:$PYTHONUSERBASE/bin
+```
+- Source the file and install the requirements:
+```bash
+source set_env-struct.sh
 pip install -r StructLM/requirements.txt
 ```
 ## Specific data downloading
